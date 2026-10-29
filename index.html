@@ -141,7 +141,8 @@ header{display:flex;flex-direction:row;justify-content:space-between;align-items
 .btn:disabled{opacity:.35;cursor:default}
 .fdone{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:16px 0 4px}
 .fdone-mark{width:64px;height:64px;border-radius:50%;background:var(--stamp);color:#fff;display:grid;place-items:center;font-size:0}
-.fdone-mark::after{content:"";width:22px;height:12px;border-left:4px solid #fff;border-bottom:4px solid #fff;transform:translateY(-3px) rotate(-45deg)}
+.fdone-mark{position:relative}
+.fdone-mark::after{content:"";position:absolute;left:50%;top:50%;width:24px;height:12px;box-sizing:border-box;border-left:4px solid #fff;border-bottom:4px solid #fff;transform:translate(-50%,-50%) translate(0,-3px) rotate(-45deg)}
 .fcard.swipe{position:relative;touch-action:pan-y;transition:transform .25s cubic-bezier(.2,.8,.2,1),opacity .2s;will-change:transform}
 .swhint{display:flex;justify-content:space-between;font-size:.75rem}
 .swl{position:absolute;top:16px;padding:4px 12px;border-radius:999px;font-weight:700;font-size:.9rem;opacity:0;transition:opacity .15s;pointer-events:none;color:#fff}
@@ -198,6 +199,12 @@ mark{background:var(--stamp-soft);color:var(--stamp);border-radius:4px;padding:0
 .own .chips .chipbtn{background:var(--teal-soft)}
 .own .chips .chipbtn[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
 .own .ansin{background:var(--teal-soft)}
+.nextbox{background:var(--teal-soft);border-radius:12px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;max-width:340px;box-sizing:border-box}
+.nextbox .label{letter-spacing:.12em;font-weight:600;font-size:.7rem}
+.fdone-btns{justify-content:center}
+.reviewbar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--teal-soft);border-radius:12px;padding:8px 8px 8px 14px}
+.reviewbar .label{letter-spacing:.12em;font-weight:600;font-size:.7rem}
+.reviewbar .btn{background:var(--sheet)}
 .lead{font-size:1.02rem;line-height:1.75}
 .okhead{align-items:center}
 .okround{margin-left:10px;font-weight:500;font-size:.8rem}
@@ -461,12 +468,13 @@ function renderToday(){
     {k:"a",min:"1分",h:"今日はお休み。英語を1つだけ見る",b:`<div class="phr"><div>${sayBtn(P(t)[0][0])}<span class="en">${esc(P(t)[0][0])}</span><span class="small muted">${esc(P(t)[0][1])}</span></div></div>`}
   ];
   const ownKey = mode==="talk" ? "talk-"+today() : t.id;
+  TD.t=t; TD.mode=mode;
   if(TD.d!==today()||TD.n!==steps.length+mode){TD.d=today(); TD.n=steps.length+mode; TD.i=null;}
   let fi = TD.i===null ? steps.findIndex(x=>!st[x.k]) : TD.i; if(fi<0) fi=steps.length;
   const title = mode==="study"?"Today's Lesson":mode==="talk"?"Saturday Speaking":"Sunday Off";
   $("pane-today").innerHTML=`
   <div class="today">
-    <div class="today-head"><h2>${title}</h2><span class="chip ${doneToday?"red":""}">${doneToday?"完了":esc((ph=>ph.grade+" "+ph.name)(PHASES.find(p=>p.id===t.p)))}</span></div>
+    <div class="today-head"><h2>${title}</h2><span class="chip ${doneToday?"red":""}">${doneToday?"Completed":esc((ph=>ph.grade+" "+ph.name)(PHASES.find(p=>p.id===t.p)))}</span></div>
     <details class="setp" id="setp" ${TD.open?"open":""}><summary><span class="small"><b>${esc(t.name.split("（")[0])}</b>${subOf(t)!==null?" ／ "+esc(LESSON[t.id][subOf(t)][0]):""}</span><span class="small muted">Change</span></summary><div class="setp-in">
     <div class="pick"><label class="small muted" for="pickSel">今日のレッスン：</label><select id="pickSel">${PHASES.map(ph=>`<optgroup label="${esc(ph.grade+" "+ph.name)}">${T.filter(x=>x.p===ph.id).map(x=>`<option value="${x.id}" ${x===t?"selected":""}>${S.done[x.id]?"✓ ":""}${esc(x.name)}${x===current()?"（今ここ）":""}</option>`).join("")}</optgroup>`).join("")}</select>${LESSON[t.id]?`<label class="small muted" for="subSel">問題：</label><select id="subSel"><option value="all" ${subOf(t)===null?"selected":""}>全部（${LESSON[t.id].length}こ）</option>${LESSON[t.id].map((x,i)=>`<option value="${i}" ${subOf(t)===i?"selected":""}>${i+1}. ${esc(x[0])}</option>`).join("")}</select>`:""}</div>
     <div class="speed"><span class="small muted">表示：</span><button class="btn" id="vFocus" aria-pressed="${S.view!=="list"}">1つずつ</button><button class="btn" id="vList" aria-pressed="${S.view==="list"}">一覧</button></div>
@@ -477,11 +485,14 @@ function renderToday(){
   </div>
   ${dueKeys().length?`<div class="card rev"><div class="today-head"><h2>復習が ${dueKeys().length} こあります</h2><span class="small muted">約2分</span></div><p class="small muted">前にまちがえた問題です。もう一度言えるか、ためしてみよう。</p><div><button class="btn stampbtn" id="goReview">復習する</button></div></div>`:""}
   <div id="okaBox"></div>`;
-  document.querySelectorAll("[data-fi]").forEach(b=>b.onclick=()=>{TD.i=+b.dataset.fi; renderToday(); scrollToToday();});
-  if($("fBack")) $("fBack").onclick=()=>{TD.i=Math.max(0,fi-1); renderToday(); scrollToToday();};
-  if($("fNext")) $("fNext").onclick=()=>{const s=steps[fi]; S.steps[today()]=Object.assign({},S.steps[today()],{[s.k]:true}); TD.i=fi+1;
-    if(steps.every(x=>(S.steps[today()]||{})[x.k]) && !S.days[today()]){S.days[today()]=1; markLesson(t,mode); save(); render(); toast("今日のレッスン完了");} else {save(); renderToday();} scrollToToday();};
-  if($("fAgain")) $("fAgain").onclick=()=>{TD.i=0; renderToday(); scrollToToday();};
+  document.querySelectorAll("[data-fi]").forEach(b=>b.onclick=()=>{closeExtra(); TD.i=+b.dataset.fi; renderToday(); scrollToToday();});
+  if($("fBack")) $("fBack").onclick=()=>{closeExtra(); TD.i=Math.max(0,fi-1); renderToday(); scrollToToday();};
+  if($("fNext")) $("fNext").onclick=()=>{closeExtra(); const s=steps[fi]; S.steps[today()]=Object.assign({},S.steps[today()],{[s.k]:true}); TD.i=fi+1;
+    if(TD.review){ if(TD.i>=steps.length) TD.review=false; save(); renderToday(); }
+    else if(steps.every(x=>(S.steps[today()]||{})[x.k])){S.days[today()]=1; markLesson(t,mode); save(); render(); toast("レッスン完了");} else {save(); renderToday();} scrollToToday();};
+  if($("fToDone")) $("fToDone").onclick=()=>{closeExtra(); TD.i=steps.length; TD.review=false; renderToday(); scrollToToday();};
+  if($("fNextLesson")) $("fNextLesson").onclick=()=>{closeExtra();  const n=nextLesson(t,mode); if(!n) return; S.mode={d:today(),m:"study"}; S.pick={d:today(),id:n.id}; S.sub=null; S.steps[today()]={}; TD.i=null; TD.n=null; save(); renderToday(); window.scrollTo({top:0,behavior:"smooth"}); };
+  if($("fAgain")) $("fAgain").onclick=()=>{closeExtra(); TD.i=0; TD.review=true; renderToday(); scrollToToday();};
   if($("setp")) $("setp").ontoggle=e=>{TD.open=e.target.open;};
   if($("vFocus")){$("vFocus").onclick=()=>{S.view="focus"; save(); renderToday();}; $("vList").onclick=()=>{S.view="list"; save(); renderToday();};}
   const own=$("ownIn"); if(own) own.addEventListener("input",()=>{S.own[ownKey]=own.value; save();});
@@ -492,8 +503,8 @@ function renderToday(){
   if($("goPhrase")) $("goPhrase").onclick=()=>{PR.mode="phrase"; $("tab-prac").click(); renderPractice(); window.scrollTo(0,0);};
   if($("copyP")) $("copyP").onclick=()=>{const txt=aiPrompt(t); navigator.clipboard.writeText(txt).then(()=>toast("コピーしました")).catch(()=>{const r=document.createRange();r.selectNodeContents($("pBox"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("選択しました。長押しでコピーしてください");});};
   document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>startTimer(+b.dataset.t));
-  $("pickSel").onchange=e=>{S.pick={d:today(),id:e.target.value}; S.sub=null; save(); renderToday(); toast("今日のレッスンをかえました");};
-  if($("subSel")) $("subSel").onchange=e=>{const v=e.target.value; S.sub=v==="all"?null:{d:today(),id:t.id,i:+v}; save(); renderToday(); toast(v==="all"?"全部の項目をやります":"この項目だけをやります");};
+  $("pickSel").onchange=e=>{closeExtra(); S.pick={d:today(),id:e.target.value}; S.sub=null; save(); renderToday(); toast("今日のレッスンをかえました");};
+  if($("subSel")) $("subSel").onchange=e=>{closeExtra(); const v=e.target.value; S.sub=v==="all"?null:{d:today(),id:t.id,i:+v}; save(); renderToday(); toast(v==="all"?"全部の項目をやります":"この項目だけをやります");};
   if($("sceneSel")) $("sceneSel").onchange=e=>{S.scene=e.target.value; save(); renderToday(); renderHow();};
   const qzReveal=(box,ok,typed,give)=>{ if(box.dataset.ans) return; box.dataset.ans=1; box.classList.add("answered");
     box.querySelector(".ansrow").hidden=true; box.querySelector(".qtools").hidden=true;
@@ -511,13 +522,14 @@ function renderToday(){
   if(!canSpeak()) $("voiceNote").textContent="（このブラウザでは音声が使えません）";
   if(S.view==="list") steps.forEach((s,i)=>{const li=document.querySelectorAll(".step")[i]; const cb=document.createElement("input"); cb.type="checkbox"; cb.id="st-"+s.k; cb.checked=!!st[s.k]; cb.setAttribute("aria-label","ステップ"+(i+1)+"完了");
     cb.onchange=()=>{S.steps[today()]=Object.assign({},S.steps[today()],{[s.k]:cb.checked}); li.classList.toggle("done",cb.checked);
-      if(steps.every(x=>(S.steps[today()]||{})[x.k]) && !S.days[today()]){S.days[today()]=1; markLesson(t,mode); toast("今日のレッスン完了"); save(); render(); return;} save();};
+      if(steps.every(x=>(S.steps[today()]||{})[x.k])){S.days[today()]=1; markLesson(t,mode); toast("レッスン完了"); save(); render(); return;} save();};
     li.querySelector(".min").after(cb); li.style.gridTemplateColumns="auto 1fr auto auto";});
   showClock();
   renderOkawari(t);
 }
 // ---- おかわり（同じレッスンの問題を、形をかえて5問） ----
 const OK={tid:null,round:0,qs:[]};
+function closeExtra(){ const had=OK.qs.length; OK.qs=[]; OK.round=0; if(had){ const t=T.find(x=>x.id===OK.tid); if(t) renderOkawari(t); } }
 function okaPool(t){ const ph=t.p; const idx=T.indexOf(t);
   const cur=(LESSON[t.id]||[]).map((x,i)=>({k:"L:"+t.id+":"+i,x}));
   const prev=T.filter((u,j)=>u.p===ph&&j<idx&&!u.rt&&LESSON[u.id]).flatMap(u=>LESSON[u.id].map((x,i)=>({k:"L:"+u.id+":"+i,x})));
@@ -561,13 +573,15 @@ function renderOkawari(t){ const box=$("okaBox"); if(!box) return;
       el.querySelectorAll(".chipw").forEach(c=>c.onclick=()=>{ if(el.dataset.ans) return; (c.parentNode===bank?out:bank).appendChild(c); });
       el.querySelector(".okcheck").onclick=()=>{ const v=[...out.querySelectorAll(".chipw")].map(c=>c.textContent).join(" "); if(!v){toast("単語をタップして並べてください"); return;} done(isMatch(v,ans), v+((ans.match(/[.?!]+$/)||[""])[0]), false); };}
   });}
+function nextLesson(t,mode){ if(!t) return null; if(mode!=="study") return current(); const i=T.indexOf(t);
+  return T.slice(i+1).find(u=>!S.done[u.id]&&u.p!=="p4") || T.slice(i+1).find(u=>u.p!=="p4") || null; }
 function markLesson(t,mode){ if(mode==="study"&&t.p!=="p4"){ S.done[t.id]=true; S.pick={d:today(),id:t.id}; } }
 function scrollToToday(){const el=document.querySelector(".today"); if(el){const y=el.getBoundingClientRect().top+window.scrollY-12; if(window.scrollY>y) window.scrollTo({top:y,behavior:"smooth"});}}
 function focusHtml(steps,st,fi,doneToday){
   const dots=`<div class="fprog">${steps.map((s,i)=>`<button class="dot ${st[s.k]?"ok":""} ${i===fi?"cur":""}" data-fi="${i}" aria-label="ステップ${i+1}${st[s.k]?"（できた）":""}">${st[s.k]&&i!==fi?"✓":i+1}</button>`).join('<i class="dline"></i>')}</div>`;
-  if(fi>=steps.length) return `${dots}<div class="fdone"><p class="fdone-mark">✓</p><h3>今日のレッスン完了</h3><p class="small muted">おつかれさまでした。余力があれば「Extra Practice」や「練習」もどうぞ。</p><div><button class="btn" id="fAgain">Review</button></div></div>`;
+  if(fi>=steps.length){ TD.review=false; } if(fi>=steps.length) return `${dots}<div class="fdone"><p class="fdone-mark" aria-hidden="true"></p><h3>Lesson Complete</h3><p class="small muted">おつかれさまでした。</p>${(n=>n?`<div class="nextbox"><span class="label">NEXT</span><p class="small">${esc(n.name)}</p></div><div class="finish fdone-btns"><button class="btn primary" id="fNextLesson">Next Lesson</button><button class="btn" id="fAgain">Review</button></div>`:`<div class="finish fdone-btns"><button class="btn" id="fAgain">Review</button></div>`)(nextLesson(TD.t,TD.mode))}</div>`;
   const s=steps[fi], last=fi===steps.length-1;
-  return `${dots}<ol class="steps"><li class="step fstep"><div class="body"><p class="label steplab">STEP ${fi+1} / ${steps.length}${s.lab?"　"+s.lab:""}</p><h3>${s.h}</h3>${s.b}</div></li></ol>
+  return `${TD.review?`<div class="reviewbar"><span class="label">REVIEW</span><button class="btn" id="fToDone">Back to Summary</button></div>`:""}${dots}<ol class="steps"><li class="step fstep"><div class="body"><p class="label steplab">STEP ${fi+1} / ${steps.length}${s.lab?"　"+s.lab:""}</p><h3>${s.h}</h3>${s.b}</div></li></ol>
   <div class="fnav"><button class="btn" id="fBack" ${fi===0?"disabled":""}>Back</button><button class="btn primary fgo" id="fNext">${last?"Done":"Next"}</button></div>`;}
 const CAL={open:false,off:0};
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -784,7 +798,7 @@ function bindPractice(){
 function render(){renderStats(); try{$("tabDot").hidden=!dueKeys().length;}catch(e){}renderToday();renderRoad();renderHow();renderPractice();
 }
 const tabs={"tab-today":"pane-today","tab-prac":"pane-prac","tab-road":"pane-road","tab-how":"pane-how"};
-Object.keys(tabs).forEach(id=>$(id).onclick=()=>{const was=$(id).getAttribute("aria-selected")==="true"; Object.entries(tabs).forEach(([t,p])=>{$(t).setAttribute("aria-selected",t===id);$(p).hidden=t!==id;}); window.scrollTo({top:0,behavior:was?"smooth":"auto"});});
+Object.keys(tabs).forEach(id=>$(id).onclick=()=>{closeExtra(); const was=$(id).getAttribute("aria-selected")==="true"; Object.entries(tabs).forEach(([t,p])=>{$(t).setAttribute("aria-selected",t===id);$(p).hidden=t!==id;}); window.scrollTo({top:0,behavior:was?"smooth":"auto"});});
 render();
 </script>
 
